@@ -1,0 +1,186 @@
+import networkx as nx
+import numpy as np
+from networkx.algorithms.shortest_paths.generic import shortest_path_length
+
+def check_string():
+    operators = list(input("Enter the operators used in the given grammar: "))
+    operators.append('$')
+    print(operators)
+   
+    terminals = list("abcdefghijklmnopqrstuvwxyz")
+    symbols = list('(/*%+-)')
+    precedence_table = np.empty([len(operators) + 1, len(operators) + 1], dtype=str, order="F")
+   
+    for j in range(1, len(operators) + 1):
+        precedence_table[0][j] = operators[j - 1]
+        precedence_table[j][0] = operators[j - 1]    
+   
+    for i in range(1, len(operators) + 1):
+        for j in range(1, len(operators) + 1):
+            if (precedence_table[i][0] in terminals) and (precedence_table[0][j] in terminals):
+                precedence_table[i][j] = ""
+            elif (precedence_table[i][0] in terminals):
+                precedence_table[i][j] = ">"
+            elif (precedence_table[i][0] in symbols) and (precedence_table[0][j] in symbols):
+                if (symbols.index(precedence_table[i][0]) <= symbols.index(precedence_table[0][j])):
+                    precedence_table[i][j] = ">"
+                else:
+                    precedence_table[i][j] = "<"
+            elif (precedence_table[i][0] in symbols) and precedence_table[0][j] in terminals:
+                precedence_table[i][j] = "<"
+            elif precedence_table[i][0] == "$" and precedence_table[0][j] != "$":
+                precedence_table[i][j] = "<"
+            elif precedence_table[0][j] == "$" and precedence_table[i][0] != "$":
+                 precedence_table[i][j] = ">"
+            else:
+                break
+               
+    print("The Operator Precedence Relational Table:")
+    print(precedence_table)
+   
+    string_to_check = list(input("Enter the string to be checked: "))
+    string_to_check.append("$")
+    stack = [None] * len(string_to_check)
+    stack_index = 0
+    stack.insert(stack_index, "$")
+    row_labels = [row[0] for row in precedence_table]
+    column_labels = list(precedence_table[0])
+    string_index = 0
+   
+    while stack[0] != stack[1]:
+        if string_to_check[len(string_to_check) - 2] in symbols:
+            break
+        elif (stack[stack_index] in row_labels) and (string_to_check[string_index] in column_labels):
+            if precedence_table[row_labels.index(stack[stack_index])][column_labels.index(string_to_check[string_index])] == "<":
+                stack_index += 1
+                stack.insert(stack_index, string_to_check[string_index])
+                string_index += 1
+            elif precedence_table[row_labels.index(stack[stack_index])][column_labels.index(string_to_check[string_index])] == ">":
+                stack.pop(stack_index)
+                stack_index -= 1
+            elif (precedence_table[row_labels.index(stack[stack_index])][column_labels.index(string_to_check[string_index])] == '') and ((stack[stack_index] == "$") and (string_to_check[string_index] == "$")):
+                stack[1] = stack[0]
+        else:
+            break
+           
+    if stack[0] != stack[1]:
+        return False
+    else:
+        return True
+
+def check_grammar(i):
+    print("Enter the", str(i + 1) + "th production")
+    production_rule = list(input().split("->"))
+    terminals = list("abcdefghijklmnopqrstuvwxyz")
+   
+    if (production_rule[0] == " " or production_rule[0] == "" or production_rule[0] in terminals or len(production_rule) == 1):
+        return False
+    else:
+        production_rule.pop(0)
+        production_rule = list(production_rule[0])
+        non_terminals = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+        symbols = list("(abcdefghijklmnopqrstuvwxyz^/*+-|),")
+        special_characters = ['!', '@', '#', '$', '?', '~', '`', ',', ';', ':', '"', '=', '_', '&', "'", "", " "]
+       
+        for i in range(0, len(production_rule), 2):
+            if (production_rule[i] == " "):
+                is_valid = False
+            elif (production_rule[i] in special_characters):
+                is_valid = False
+                break
+            elif (production_rule[len(production_rule) - 1] in symbols) and ((production_rule[0] == "(" and production_rule[len(production_rule) - 1] == ")") or (production_rule.count("(") == production_rule.count(")"))):
+                is_valid = True
+            elif (production_rule[i] in terminals):
+                is_valid = True
+            elif (production_rule[len(production_rule) - 1] in symbols):
+                is_valid = False
+            elif ((i == len(production_rule) - 1) and (production_rule[i] in non_terminals)):
+                is_valid = True
+            elif ((i == len(production_rule) - 1) and (production_rule[i] not in non_terminals) and (production_rule[i] in symbols) and production_rule[i - 1] in symbols):
+                is_valid = True
+            elif ((production_rule[i] in non_terminals) and(production_rule[i + 1] in symbols)):
+                is_valid = True
+            elif ((production_rule[i] in non_terminals) and (production_rule[i + 1] in non_terminals)):
+                is_valid = False
+                break
+            else:
+                is_valid = False
+                break
+               
+        if (is_valid == True):
+            return True
+        else:
+            return False
+
+num_lhs_variables = int(input("Enter the number of productions: "))
+
+for i in range(num_lhs_variables):
+    if check_grammar(i):
+        grammar_accepted = True
+    else:
+        grammar_accepted = False
+        break
+
+if grammar_accepted:
+    print("Grammar is accepted")
+   
+    if check_string():
+        print("String is accepted")
+    else:
+        print("String is not accepted")
+else:
+    print("Grammar is not accepted")
+
+
+def create_edges(precedence_table):
+    edges = []
+
+    for i in range(1, len(precedence_table)):
+        for j in range(1, len(precedence_table[i])):
+            if precedence_table[i][j] == '<':
+                source = f'f{precedence_table[i][0]}'
+                destination = f'g{precedence_table[0][j]}'
+                edges.append((source, destination))
+            elif precedence_table[i][j] == '>':
+                source = f'g{precedence_table[0][j]}'
+                destination = f'f{precedence_table[i][0]}'
+                edges.append((source, destination))
+
+    return edges
+
+precedence_table = [
+    ['', '+', '*', 'a', '$'],
+    ['+', '', '', '<', '>'],
+    ['*', '', '', '>', '>'],
+    ['a', '>', '', '', '>'],
+    ['$', '<', '<', '<', '']
+]
+
+edges = create_edges(precedence_table)
+for edge in edges:
+    print(f'Edge: {edge[0]} -> {edge[1]}')
+
+print(edges)
+
+G = nx.DiGraph()
+G.add_edges_from(edges)
+
+f_nodes = [node for node in G.nodes if node.startswith('f')]
+g_nodes = [node for node in G.nodes if node.startswith('g')]
+
+max_lengths_f = {}
+max_lengths_g = {}
+
+for node in f_nodes:
+    max_lengths_f[node] = max(shortest_path_length(G, node).values())
+
+for node in g_nodes:
+    max_lengths_g[node] = max(shortest_path_length(G, node).values())
+
+print("Maximum path lengths from 'f' nodes:")
+for node, length in max_lengths_f.items():
+    print(f"{node}: {length}")
+
+print("\nMaximum path lengths from 'g' nodes:")
+for node, length in max_lengths_g.items():
+    print(f"{node}: {length}")
