@@ -1,0 +1,182 @@
+def removeLeftRecursion(grammar_rules):
+    new_rules = {}
+    for non_terminal in grammar_rules:
+        recursive_rules = []
+        non_recursive_rules = []
+        all_rhs = grammar_rules[non_terminal]
+        for rhs in all_rhs:
+            if rhs[0] == non_terminal:
+                recursive_rules.append(rhs[1:])
+            else:
+                non_recursive_rules.append(rhs)
+
+        if len(recursive_rules) != 0:
+            new_non_terminal = non_terminal + "'"
+            while (new_non_terminal in grammar_rules.keys()) or (new_non_terminal in new_rules.keys()):
+                new_non_terminal += "'"
+                
+            for rule_index in range(len(non_recursive_rules)):
+                non_recursive_rules[rule_index].append(new_non_terminal)
+            grammar_rules[non_terminal] = non_recursive_rules
+            
+            for rule_index in range(len(recursive_rules)):
+                recursive_rules[rule_index].append(new_non_terminal)
+            recursive_rules.append(['e'])
+            new_rules[new_non_terminal] = recursive_rules
+            
+    for new_rule_key in new_rules:
+        grammar_rules[new_rule_key] = new_rules[new_rule_key]
+    return grammar_rules
+
+
+def leftFactoring(grammar_rules):
+    modified_rules = {}
+    for non_terminal in grammar_rules:
+        all_rhs = grammar_rules[non_terminal]
+        temp = dict()
+        
+        for sub_rhs in all_rhs:
+            if sub_rhs[0] not in list(temp.keys()):
+                temp[sub_rhs[0]] = [sub_rhs]
+            else:
+                temp[sub_rhs[0]].append(sub_rhs)
+        new_rules = []
+        temp_dict = {}
+        for term_key in temp:
+            all_starting_with_term_key = temp[term_key]
+            if len(all_starting_with_term_key) > 1:
+                new_non_terminal = non_terminal + "'"
+                while (new_non_terminal in grammar_rules) or (new_non_terminal in temp_dict):
+                    new_non_terminal += "'"
+                new_rules.append([term_key, new_non_terminal])
+                expanded_rules = []
+                for g in temp[term_key]:
+                    expanded_rules.append(g[1:])
+                temp_dict[new_non_terminal] = expanded_rules
+            else:
+                new_rules.append(all_starting_with_term_key[0])
+        modified_rules[non_terminal] = new_rules
+        for key in temp_dict:
+            modified_rules[key] = temp_dict[key]
+    return modified_rules
+
+rulesDiction = {
+    'S': [['(', 'L', ')'], ['a']],
+    'L': [['L',',','S'], ['S']],
+}
+
+rulesDiction1 = {
+    'T': [['c', 'X'], ['c', 'Y']],
+    'X': [['f']],
+    'Y': [['g']]
+}
+
+
+def print_grammar(grammar_rules):
+    for non_terminal, rules in grammar_rules.items():
+        print(f"{non_terminal} -> ", end="")
+        for i, rule in enumerate(rules):
+            for j, symbol in enumerate(rule):
+                print(symbol, end="")
+                if j < len(rule) - 1:
+                    print(" ", end="")
+            if i < len(rules) - 1:
+                print(" | ", end="")
+        print()
+    
+
+result=removeLeftRecursion(rulesDiction)
+#print_grammar(result)
+grammar_rules1=leftFactoring(rulesDiction1)
+#print_grammar(grammar_rules1)
+
+terminals = []
+for i in result:
+	for j in result[i]:
+		for k in j:
+			if k not in result:
+				terminals+=[k]
+terminals = list(set(terminals))
+
+def first(gram, term):
+	a = []
+	if term not in gram:
+		return [term]
+	for i in gram[term]:
+		if i[0] not in gram:
+			a.append(i[0])
+		elif i[0] in gram:
+			a += first(gram, i[0])
+	return a
+
+firsts = {}
+for i in result:
+	firsts[i] = first(result,i)
+	#print(f'First({i}):',firsts[i])
+
+def follow(gram, term):
+	a = []
+	for rule in gram:
+		for i in gram[rule]:
+			if term in i:
+				temp = i
+				indx = i.index(term)
+				if indx+1!=len(i):
+					if i[-1] in firsts:
+						a+=firsts[i[-1]]
+					else:
+						a+=[i[-1]]
+				else:
+					a+=["e"]
+				if rule != term and "e" in a:
+					a+= follow(gram,rule)
+	return a
+
+follows = {}
+for i in result:
+	follows[i] = list(set(follow(result,i)))
+	if "e" in follows[i]:
+		follows[i].pop(follows[i].index("e"))
+	follows[i]+=["$"]
+	#print(f'Follow({i}):',follows[i])
+
+result_modified = {}
+for i in result:
+    l = []
+    for j in result[i]:
+        temp = ""
+        for k in j:
+            temp += k
+        l.append(temp)
+    result_modified[i] = l
+
+terminal_terms = list(terminals)
+terminal_terms.pop(terminal_terms.index("e"))
+terminal_terms += ["$"]
+parse_table = {}
+
+for i in result:
+    for j in terminal_terms:
+        if j in firsts[i]:
+            parse_table[(i, j)] = result_modified[i][0]
+        else:
+            parse_table[(i, j)] = ""
+    if "e" in firsts[i]:
+        for j in terminal_terms:
+            if j in follows[i]:
+                parse_table[(i, j)] = "e"
+parse_table[("F", "i")] = "i"
+toprint = f'{"": <10}'
+for i in terminal_terms:
+    toprint += f'|{i: <10}'
+print(toprint)
+
+for i in result:
+    toprint = f'{i: <10}'
+    for j in terminal_terms:
+        if parse_table[(i, j)] != "":
+            toprint += f'|{i + "->" + parse_table[(i, j)]: <10}'
+        else:
+            toprint += f'|{parse_table[(i, j)]: <10}'
+    print(f'{"-":-<76}')
+    print(toprint)
