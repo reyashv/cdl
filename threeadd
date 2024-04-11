@@ -90,3 +90,73 @@ generator = ThreeAddressCodeGenerator()
 lines=generator.generate_code(postfix_expression)
 generator.generate_parse_tree(lines)
 generator.print_tree(generator.root)
+
+
+
+
+
+
+
+
+
+class ThreeAddressCodeGenerator:
+    def __init__(self):
+        self.quadruples = []
+        self.triples = []
+        self.temp_count = 0
+    
+    def generate_temp(self):
+        temp = f"t{self.temp_count}"
+        self.temp_count += 1
+        return temp
+
+    def generate_code(self, expression):
+        stack = []
+        tokens = expression.split()
+        for token in tokens:
+            if token.isalnum():
+                stack.append(token)
+            else:
+                op2 = stack.pop()
+                op1 = stack.pop()
+                temp = self.generate_temp()
+                self.quadruples.append((token, op1, op2, temp))
+                self.triples.append((token, op1, op2))
+                stack.append(temp)
+        return self.quadruples, self.triples
+
+def infix_to_postfix(tokens):
+    precedence = {'+': 1, '-': 1, '*': 2, '/': 2}
+    output = []
+    operator_stack = []
+
+    for token in expression.split():
+        if token.isalpha():
+            output.append(token)
+        elif token == '(':
+            operator_stack.append(token)
+        elif token == ')':
+            while operator_stack and operator_stack[-1] != '(':
+                output.append(operator_stack.pop())
+            operator_stack.pop()  
+        else: 
+            while operator_stack and precedence.get(token, 0) <= precedence.get(operator_stack[-1], 0):
+                output.append(operator_stack.pop())
+            operator_stack.append(token)
+    while operator_stack:
+        output.append(operator_stack.pop())
+    return ' '.join(output)
+
+
+expression = "a + b * c - d / e"
+postfix_expression=infix_to_postfix(expression)
+generator = ThreeAddressCodeGenerator()
+quadruples, triples = generator.generate_code(postfix_expression)
+print("Quadruples representation:")
+for quad in quadruples:
+    print(quad)
+
+print("\nTriples representation:")
+for triple in triples:
+    print(triple)
+
