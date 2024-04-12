@@ -99,79 +99,6 @@ def generate_states(states_dict):
                 compute_goto(key)
     return
 
-def first(rule):
-    global grammar_rules, nonterminals, terminals, production_rules
-    if len(rule) != 0 and (rule is not None):
-        if rule[0] in terminals:
-            return rule[0]
-        elif rule[0] == '#':
-            return '#'
-    if len(rule) != 0:
-        if rule[0] in list(production_rules.keys()):
-            fres = []
-            rhs_rules = production_rules[rule[0]]
-            for itr in rhs_rules:
-                indiv_res = first(itr)
-                if type(indiv_res) is list:
-                    for i in indiv_res:
-                        fres.append(i)
-                else:
-                    fres.append(indiv_res)
-            if '#' not in fres:
-                return fres
-            else:
-                new_list = []
-                fres.remove('#')
-                if len(rule) > 1:
-                    ans_new = first(rule[1:])
-                    if ans_new is not None:
-                        if type(ans_new) is list:
-                            new_list = fres + ans_new
-                        else:
-                            new_list = fres + [ans_new]
-                    else:
-                        new_list = fres
-                    return new_list
-                fres.append('#')
-                return fres
-
-def follow(nt):
-    global start_symbol, grammar_rules, nonterminals, terminals, production_rules
-    solset = set()
-    if nt == start_symbol:
-        solset.add('$')
-    for cur_nt in production_rules:
-        rhs = production_rules[cur_nt]
-        for subrule in rhs:
-            if nt in subrule:
-                while nt in subrule:
-                    index_nt = subrule.index(nt)
-                    subrule = subrule[index_nt + 1:]
-                    if len(subrule) != 0:
-                        res = first(subrule)
-                        if '#' in res:
-                            new_list = []
-                            res.remove('#')
-                            ans_new = follow(cur_nt)
-                            if ans_new is not None:
-                                if type(ans_new) is list:
-                                    new_list = res + ans_new
-                                else:
-                                    new_list = res + [ans_new]
-                            else:
-                                new_list = res
-                            res = new_list
-                    else:
-                        if nt != cur_nt:
-                            res = follow(cur_nt)
-                    if res is not None:
-                        if type(res) is list:
-                            for g in res:
-                                solset.add(g)
-                        else:
-                            solset.add(res)
-    return list(solset)
-
 def create_parse_table(states_dict, state_map, terminals, nonterminals):
     global separated_rules_list, production_rules
     rows = list(states_dict.keys())
@@ -213,7 +140,8 @@ def create_parse_table(states_dict, state_map, terminals, nonterminals):
                 temp2[1].remove('.')
                 for key in numbered:
                     if numbered[key] == temp2:
-                        follow_result = follow(rule[0])
+                        follow_result = follow[rule[0]]
+                        print(rule[0],follow_result)
                         for col in follow_result:
                             index = cols.index(col)
                             if key == 0:
@@ -245,7 +173,7 @@ rules = ["E -> E + T | T",
 nonterminals = ['E', 'T', 'F']
 terminals = ['id', '+', '*', '(', ')']
 start_symbol = nonterminals[0]
-
+follow={"E'":['$'], "E":['$', ')', '+'],"T":['*', '$', ')', '+'],"F":['*', '$', ')', '+']}
 print("\nOriginal grammar input:\n")
 for y in rules:
     print(y)
