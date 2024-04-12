@@ -14,11 +14,11 @@ def grammar_augmentation(rules, nonterminals, start_symbol):
             new_rules.append([lhs, rhs1])
     return new_rules
 
-def find_closure(input_state, dot_symbol):
-    global start_symbol, separated_rules_list, states_dict
+def closure(input_state, dot_symbol):
+    global start_symbol, augrules, states_dict
     closure_set = []
     if dot_symbol == start_symbol:
-        for rule in separated_rules_list:
+        for rule in augrules:
             if rule[0] == dot_symbol:
                 closure_set.append(rule)
     else:
@@ -28,11 +28,11 @@ def find_closure(input_state, dot_symbol):
         prev_len = len(closure_set)
         temp_closure_set = []
         for rule in closure_set:
-            index_of_dot = rule[1].index('.')
+            dotindex = rule[1].index('.')
             if rule[1][-1] != '.':
-                dot_points_here = rule[1][index_of_dot + 1]
-                for in_rule in separated_rules_list:
-                    if dot_points_here == in_rule[0] and in_rule not in temp_closure_set:
+                dots = rule[1][dotindex + 1]
+                for in_rule in augrules:
+                    if dots == in_rule[0] and in_rule not in temp_closure_set:
                         temp_closure_set.append(in_rule)
         for rule in temp_closure_set:
             if rule not in closure_set:
@@ -44,10 +44,10 @@ def compute_goto(state):
     generate_states_for = []
     for rule in states_dict[state]:
         if rule[1][-1] != '.':
-            index_of_dot = rule[1].index('.')
-            dot_points_here = rule[1][index_of_dot + 1]
-            if dot_points_here not in generate_states_for:
-                generate_states_for.append(dot_points_here)
+            dotindex = rule[1].index('.')
+            dots = rule[1][dotindex + 1]
+            if dots not in generate_states_for:
+                generate_states_for.append(dots)
     if len(generate_states_for) != 0:
         for symbol in generate_states_for:
             goto(state, symbol)
@@ -57,18 +57,18 @@ def goto(state, char_next_to_dot):
     global states_dict, state_count, state_map
     new_state = []
     for rule in states_dict[state]:
-        index_of_dot = rule[1].index('.')
+        dotindex = rule[1].index('.')
         if rule[1][-1] != '.':
-            if rule[1][index_of_dot + 1] == char_next_to_dot:
+            if rule[1][dotindex + 1] == char_next_to_dot:
                 shifted_rule = copy.deepcopy(rule)
-                shifted_rule[1][index_of_dot] = shifted_rule[1][index_of_dot + 1]
-                shifted_rule[1][index_of_dot + 1] = '.'
+                shifted_rule[1][dotindex] = shifted_rule[1][dotindex + 1]
+                shifted_rule[1][dotindex + 1] = '.'
                 new_state.append(shifted_rule)
     add_closure_rules = []
     for rule in new_state:
         index_dot = rule[1].index('.')
         if rule[1][-1] != '.':
-            closure_res = find_closure(new_state, rule[1][index_dot + 1])
+            closure_res = closure(new_state, rule[1][index_dot + 1])
             for rule in closure_res:
                 if rule not in add_closure_rules and rule not in new_state:
                     add_closure_rules.append(rule)
@@ -89,18 +89,18 @@ def goto(state, char_next_to_dot):
 
 def generate_states(states_dict):
     prev_len = -1
-    called_goto_on = []
+    callgoto = []
     while len(states_dict) != prev_len:
         prev_len = len(states_dict)
         keys = list(states_dict.keys())
         for key in keys:
-            if key not in called_goto_on:
-                called_goto_on.append(key)
+            if key not in callgoto:
+                callgoto.append(key)
                 compute_goto(key)
     return
 
-def create_parse_table(states_dict, state_map, terminals, nonterminals):
-    global separated_rules_list, production_rules
+def parsetable(states_dict, state_map, terminals, nonterminals):
+    global augrules, prodrules
     rows = list(states_dict.keys())
     cols = terminals + ['$'] + nonterminals
     table = []
@@ -120,19 +120,19 @@ def create_parse_table(states_dict, state_map, terminals, nonterminals):
             table[a][b] = table[a][b] + f"S{state_map[entry]} "
     numbered = {}
     key_count = 0
-    for rule in separated_rules_list:
+    for rule in augrules:
         temp_rule = copy.deepcopy(rule)
         temp_rule[1].remove('.')
         numbered[key_count] = temp_rule
         key_count += 1
-    added_r = f"{separated_rules_list[0][0]} -> {separated_rules_list[0][1][1]}"
+    added_r = f"{augrules[0][0]} -> {augrules[0][1][1]}"
     rules.insert(0, added_r)
     for rule in rules:
         lhs, rhs = map(str.strip, rule.split("->"))
         rhs = rhs.strip().split('|')
         for i in range(len(rhs)):
             rhs[i] = rhs[i].strip().split()
-        production_rules[lhs] = rhs
+        prodrules[lhs] = rhs
     for state_no in states_dict:
         for rule in states_dict[state_no]:
             if rule[1][-1] == '.':
@@ -141,7 +141,6 @@ def create_parse_table(states_dict, state_map, terminals, nonterminals):
                 for key in numbered:
                     if numbered[key] == temp2:
                         follow_result = follow[rule[0]]
-                        print(rule[0],follow_result)
                         for col in follow_result:
                             index = cols.index(col)
                             if key == 0:
@@ -162,7 +161,7 @@ def print_result(rules):
     for rule in rules:
         print(f"{rule[0]} -> {' '.join(rule[1])}")
 
-def print_all_goto():
+def printgoto():
     global state_map
     for itr in state_map:
         print(f"GOTO ( I{itr[0]} ,{itr[1]} ) = I{state_map[itr]}")
@@ -179,12 +178,12 @@ for y in rules:
     print(y)
 
 print("\nGrammar after Augmentation: \n")
-separated_rules_list = grammar_augmentation(rules, nonterminals, start_symbol)
-print_result(separated_rules_list)
+augrules = grammar_augmentation(rules, nonterminals, start_symbol)
+print_result(augrules)
 
-start_symbol = separated_rules_list[0][0]
+start_symbol = augrules[0][0]
 print("\nCalculated closure: I0\n")
-I0 = find_closure(0, start_symbol)
+I0 = closure(0, start_symbol)
 print_result(I0)
 
 states_dict = {}
@@ -199,7 +198,7 @@ for st in states_dict:
     print_result(states_dict[st])
     print()
 print("Result of GOTO computation:\n")
-print_all_goto()
+printgoto()
 
-production_rules = {}
-create_parse_table(states_dict, state_map, terminals, nonterminals)
+prodrules = {}
+parsetable(states_dict, state_map, terminals, nonterminals)
