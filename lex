@@ -2,6 +2,15 @@ lex ex7.lex
 gcc –o ex7 lex.yy.c –lfl
 ./ex7  filename
 
+flex byacc bison bison++ byacc-j
+lex lex1.l
+cc lex.yy.c -lfl
+./a.out
+
+flex hello.l
+gcc lex.yy.c
+a.exe
+
 %{
 #include<stdlib.h>
 #include<stdio.h>
